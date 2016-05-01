@@ -12,13 +12,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #import <Foundation/Foundation.h>
-#import "DefaultJvmOutputLanguageWriter.h"
-#import "ClassPropertiesObject.h"
 #import "OutputLanguageWriterProtocol.h"
 
+static NSString *const kWritingOptionJsonLibrary = @"kWritingOptionJsonLibrary";
 
-@interface OutputLanguageWriterJava : DefaultJvmOutputLanguageWriter
+/**
+ * DefaultOutputLanguageWriter is a basic implementation of shared functionality for OutputLanguageWriterProtocol. It is abstract and
+ * does not implement writeClassObjects or reservedWords, so subclasses must.
+ */
+@interface DefaultOutputLanguageWriter : NSObject <OutputLanguageWriterProtocol>
 
 @end

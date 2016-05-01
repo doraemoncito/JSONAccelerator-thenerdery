@@ -44,6 +44,7 @@
     self.classPrefixCell.placeholderString = @"NRD";
     
     self.javaPanel.hidden = YES;
+    self.jsonLibraryPanel.hidden = YES;
     self.objectiveCPanel.hidden = NO;
 
     [self.languageDropDown selectItemAtIndex:2];
@@ -54,8 +55,9 @@
     self.languageDropDown.nextKeyView = self.baseClassField;
     [self.baseClassField becomeFirstResponder];
     
-    if (_languageDropDownIndex == OutputLanguageJava) {
+    if (_languageDropDownIndex == OutputLanguageJava || _languageDropDownIndex == OutputLanguageScala) {
         self.javaPanel.hidden = NO;
+        self.jsonLibraryPanel.hidden = _languageDropDownIndex != OutputLanguageScala;
         self.objectiveCPanel.hidden = YES;
 
         self.packageNameLabel.hidden = NO;
@@ -64,13 +66,33 @@
         self.baseClassField.nextKeyView = self.packageNameField;
     } else if (_languageDropDownIndex == OutputLanguageObjectiveC) {
         self.javaPanel.hidden = YES;
+        self.jsonLibraryPanel.hidden = YES;
         self.objectiveCPanel.hidden = NO;
         self.buildForArcButton.hidden = NO;
         
         self.baseClassField.nextKeyView = self.classPrefixField;
     } else {
         self.javaPanel.hidden = YES;
+        self.jsonLibraryPanel.hidden = YES;
         self.objectiveCPanel.hidden = YES;
+    }
+}
+
+- (JsonLibrary)chosenJsonLibrary {
+    if ([self chosenLanguage] == OutputLanguageScala) {
+        switch (_jsonLibraryDropDownIndex) {
+            case 1:
+                return JsonLibraryScalaPlay;
+                break;
+            case 2:
+                return JsonLibraryScalaAkkaHttpSpray;
+                break;
+            default:
+                return JsonLibraryNone;
+                break;
+        }
+    } else {
+        return -JsonLibraryNone;
     }
 }
 
@@ -85,6 +107,8 @@
         return OutputLanguageDjangoPython;
     } else if (_languageDropDownIndex == 4) {
         return OutputLanguagePython;
+    } else if (_languageDropDownIndex == 5) {
+        return OutputLanguageScala;
     } else {
         return -1;
     }

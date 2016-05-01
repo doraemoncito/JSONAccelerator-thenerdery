@@ -31,6 +31,7 @@
 #import "OutputLanguageWriterCoreData.h"
 #import "OutputLanguageWriterDjango.h"
 #import "OutputLanguageWriterPython.h"
+#import "OutputLanguageWriterScalaCaseClass.h"
 
 #import "CoreDataModelGenerator.h"
 
@@ -48,6 +49,7 @@
 - (void)generateFiles;
 - (void)getDataButtonPressed;
 - (void)closeAlertBox;
+- (BOOL)doesDuplicateExist:(NSArray *)outputObjects atPath:(NSString *)filePath withExtension:(NSString *)extension;
 
 @end
 
@@ -380,13 +382,10 @@
                 NSDictionary *optionsDict = nil;
                 
                 NSString *baseClassName = (self.languageChooserViewController).baseClassName;
-                                
+                JsonLibrary jsonLibrary = (self.languageChooserViewController).chosenJsonLibrary;
                 
-                                
                 if (language == OutputLanguageObjectiveC) {
                     NSString *classPrefix = (self.languageChooserViewController).classPrefix;
-                    
-                    
                     
                     if (!classPrefix) {
                         classPrefix = @"";
@@ -404,7 +403,16 @@
                     }
                 } else if (language == OutputLanguageJava) {
                     writer = [[OutputLanguageWriterJava alloc] init];
-                    optionsDict = @{kJavaWritingOptionBaseClassName: baseClassName, kJavaWritingOptionPackageName: self.languageChooserViewController.packageName};
+                    optionsDict = baseClassName != nil ? @{kJvmWritingOptionBaseClassName: baseClassName,
+                                                           kJvmWritingOptionPackageName: self.languageChooserViewController.packageName} :
+                                                         @{kJvmWritingOptionPackageName: self.languageChooserViewController.packageName};
+                } else if (language == OutputLanguageScala) {
+                    writer = [[OutputLanguageWriterScalaCaseClass alloc] init];
+                    optionsDict = baseClassName != nil ? @{kJvmWritingOptionBaseClassName: baseClassName,
+                                                           kJvmWritingOptionPackageName: self.languageChooserViewController.packageName,
+                                                           kWritingOptionJsonLibrary: [NSNumber numberWithUnsignedInteger:jsonLibrary]} :
+                                                         @{kJvmWritingOptionPackageName: self.languageChooserViewController.packageName,
+                                                           kWritingOptionJsonLibrary: [NSNumber numberWithUnsignedInteger:jsonLibrary]};
                 } else if (language == OutputLanguageCoreDataObjectiveC) {
                     writer = [[OutputLanguageWriterCoreData alloc] init];
                     
@@ -473,7 +481,8 @@
     
     OutputLanguage language = [self.languageChooserViewController chosenLanguage];
     // If we're creating java files, and there's no package name, reject
-    if (language == OutputLanguageJava && (self.languageChooserViewController.packageName == nil || [self.languageChooserViewController.packageName isEqual: @""]) ) {
+    if ((language == OutputLanguageJava || language == OutputLanguageScala) &&
+        (self.languageChooserViewController.packageName == nil || [self.languageChooserViewController.packageName isEqual: @""]) ) {
         NSAlert *alert = [NSAlert alertWithMessageText:@"No Package Name" defaultButton:@"Close" alternateButton:nil otherButton:nil informativeTextWithFormat:@"Please enter a package name."];
         [alert runModal];
         
@@ -481,27 +490,18 @@
     }
     
     // Check to see if we're going to overwrite files
-    NSFileManager *fileManager = [[NSFileManager alloc] init];
     NSString *filePath = url.path;
     
     BOOL willOverwriteFiles = NO;
     NSArray *outputObjects = (self.modeler).parsedDictionary.allValues;
     
-    
-    
     if (language == OutputLanguageObjectiveC) {
-        for (ClassBaseObject *outputObject in outputObjects) {
-            if ( [fileManager fileExistsAtPath:[[filePath stringByAppendingPathComponent:outputObject.className] stringByAppendingPathExtension:@"m"]]
-                || [fileManager fileExistsAtPath:[[filePath stringByAppendingPathComponent:outputObject.className] stringByAppendingPathExtension:@"h"]] ) {
-                willOverwriteFiles = YES;
-            }
-        }
+        willOverwriteFiles = willOverwriteFiles || [self doesDuplicateExist:outputObjects atPath:filePath withExtension:@"m"];
+        willOverwriteFiles = willOverwriteFiles || [self doesDuplicateExist:outputObjects atPath:filePath withExtension:@"h"];
     } else if (language == OutputLanguageJava) {
-        for (ClassBaseObject *outputObject in outputObjects) {
-            if ( [fileManager fileExistsAtPath:[[filePath stringByAppendingPathComponent:outputObject.className] stringByAppendingPathExtension:@"java"]] ) {
-                willOverwriteFiles = YES;
-            }
-        }
+        willOverwriteFiles = willOverwriteFiles || [self doesDuplicateExist:outputObjects atPath:filePath withExtension:@"java"];
+    } else if (language == OutputLanguageScala) {
+        willOverwriteFiles = willOverwriteFiles || [self doesDuplicateExist:outputObjects atPath:filePath withExtension:@"scala"];
     }
     
     if (willOverwriteFiles) {
@@ -516,6 +516,17 @@
     }
     
     return YES;
+}
+
+- (BOOL)doesDuplicateExist:(NSArray *)outputObjects atPath:(NSString *)filePath withExtension:(NSString *)extension {
+    NSFileManager *fileManager = [[NSFileManager alloc] init];
+    for (ClassBaseObject *outputObject in outputObjects) {
+        NSString *fullPath = [[filePath stringByAppendingPathComponent:outputObject.className] stringByAppendingPathExtension:extension];
+        if ([fileManager fileExistsAtPath:fullPath]) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 #pragma mark - Custom Delegate method
